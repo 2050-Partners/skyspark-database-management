@@ -36,8 +36,8 @@ for i,file in enumerate(csvList):
     #create the Ref from the point ID in the filename
     filename = file.split('/')[-1]
     pointId = filename.split('_')[0]
-    #idRef = Ref("p:crResearch:r:" + pointId)
-    idRef = Ref("p:firstThing:r:" + pointId)
+    #idRef = Ref("p:firstThing:r:" + pointId) JUST FOR TESTING
+    idRef = Ref("p:crResearch:r:" + pointId)
     
     with open_haystack_client(uri, username, password) as haystack_client:
 
