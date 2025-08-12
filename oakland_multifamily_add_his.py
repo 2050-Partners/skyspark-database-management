@@ -6,6 +6,7 @@ the data in the CSV as a history to the point in SkySpark.
 
 ### IMPORT ###
 import os
+import time
 import math
 import csv
 import urllib
@@ -33,36 +34,63 @@ csvList = glob.glob(csvFolder + '/*.csv')
 
 for i,file in enumerate(csvList):
 
-    #create the Ref from the point ID in the filename
-    filename = file.split('/')[-1]
-    pointId = filename.split('_')[0]
-    #idRef = Ref("p:firstThing:r:" + pointId) JUST FOR TESTING
-    idRef = Ref("p:crResearch:r:" + pointId)
-    
-    with open_haystack_client(uri, username, password) as haystack_client:
+    #pick up where script left off
+    if i > 13:
+        nextFile = False
 
-        #each point may have different units, so need to grab those from SkySpark before creating a grid of data
-        pointUnits = haystack_client.read_by_id(idRef)['unit']
+        while nextFile == False:
 
-        #Create a mock Haystack grid for the point history from the csv file
-        his = csv2grid(file, units=pointUnits)
+            #create the Ref from the point ID in the filename
+            filename = file.split('/')[-1]
+            pointId = filename.split('_')[0]
+            #idRef = Ref("p:firstThing:r:" + pointId) JUST FOR TESTING
+            idRef = Ref("p:crResearch:r:" + pointId)
+            
+            with open_haystack_client(uri, username, password) as haystack_client:
 
-        errorCount = 0
-        try:
-            response = haystack_client.his_write_by_id(idRef, his)
+                #each point may have different units, so need to grab those from SkySpark before creating a grid of data
+                pointUnits = haystack_client.read_by_id(idRef)['unit']
 
-        except urllib.error.HTTPError as eHttp:
-            print("HTTP error with", idRef, "full grid. Trying again.")
+                #Create a mock Haystack grid for the point history from the csv file
+                his = csv2grid(file, units=pointUnits)
 
-            #if you get a 500 error back, the grid is mostly likely too big. Try again but with half the grid at a time
-            try:
-                mid = math.ceil(len(his)/2)
-                response = haystack_client.his_write_by_id(idRef, his[0:mid])
-                response = haystack_client.his_write_by_id(idRef, his[mid:-1])
+                errorCount = 0
+                try:
+                    response = haystack_client.his_write_by_id(idRef, his)
+                    nextFile = True
 
-            except Exception as e:
-                print('Failed again for', idRef)
-                errorCount += 1
+                except urllib.error.HTTPError as eHttp:
+                    print("HTTP error with", idRef, "Trying again.")
+
+                    #if you get a 500 error back, the grid is mostly likely too big. Try again but with half the grid at a time
+                    if eHttp.status == 500:
+
+                        print("# of rows for point history =", len(his))
+
+                        try:
+                            mid = math.ceil(len(his)/2)
+                            response = haystack_client.his_write_by_id(idRef, his[0:mid])
+                            response = haystack_client.his_write_by_id(idRef, his[mid:-1])
+                            nextFile = True
+
+                        except Exception as e:
+                            print('Failed again for', idRef)
+                            errorCount += 1
+
+                    #if you get a 502 error back, there's a server error and it's most likely overloaded. Wait a few minutes and try again.
+                    elif eHttp.status == 502:
+
+                        #wait 5 minutes
+                        time.sleep(300)
+
+                        try:
+                            response = haystack_client.his_write_by_id(idRef, his)
+                            nextFile = True
+
+                        except Exception as e:
+                            print('Failed again for', idRef)
+                            nextFile = True
+                            errorCount += 1
 
 
 print("Number of errors", errorCount)
