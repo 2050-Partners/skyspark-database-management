@@ -27,6 +27,16 @@ class EmptyUnitsError(Exception):
 
 
 ### FUNCTIONS ###
+def axon2Data(axon_expr):
+    data, _ = runAxon(axon_expr)
+    return data
+
+
+def axon2PointIds(axon_expr):
+    _, pointIds = runAxon(axon_expr)
+    return pointIds
+
+
 def csv2grid(filepath: str, tz=ZoneInfo('America/Los_Angeles'), units="", returnHeaders=False):
     '''
     Read a csv file to create a (mock Python version of a) Haystack Grid object. 
@@ -104,3 +114,21 @@ def loadCredentials():
     uri      = os.getenv("DB_URI")
 
     return username, password, uri
+
+
+def runAxon(axon_expr):
+    load_dotenv()
+    username = os.getenv("DB_USERNAME")
+    password = os.getenv("DB_PASSWORD")
+    uri      = os.getenv("DB_URI")
+
+    with open_haxall_client(uri, username, password) as client:
+        #data is Grid returned from SkySpark
+        meta, data = client.eval(axon_expr).to_pandas_all()
+
+        #create a list of point IDs
+        pointIds = []
+        for id in list(data.id.values):
+            pointIds.append(id)
+
+    return data, pointIds
