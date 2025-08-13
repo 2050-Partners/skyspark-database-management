@@ -27,6 +27,7 @@ print("start:", datetime.now(), "\n")
 
 #load credentials from .env file
 username, password, uri = loadCredentials() #"https://codereadiness.com/api/crResearch"
+uri = "https://codereadiness.com/api/crResearch"
 
 #csvFolder = "/Users/ericswanson/Library/CloudStorage/OneDrive-2050Partners,Inc/Documents/test-csv" JUST FOR TESTING
 csvFolder = "/Users/ericswanson/Library/CloudStorage/OneDrive-SharedLibraries-2050Partners,Inc/Elise Wall - sensorFiles"
