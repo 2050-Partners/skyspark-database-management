@@ -28,11 +28,29 @@ class EmptyUnitsError(Exception):
 
 ### FUNCTIONS ###
 def axon2Data(axon_expr):
+    '''
+    FUNCTION TO BE CALLED IN R.
+    Returning a Pandas DataFrame after running an Axon expression with the SkySpark API. 
+    Wrapper function for runAxon().
+    Inputs:
+        axon_expr - Axon expression to be run by the SkySpark API
+    Outputs:
+        data (Pandas DataFrame) - Grid of data returned from SkySpark 
+    '''
     data, _ = runAxon(axon_expr)
     return data
 
 
 def axon2PointIds(axon_expr):
+    '''
+    FUNCTION TO BE CALLED IN R.
+    Returning a list of SkySpark point IDs after running an Axon expression with the SkySpark API. 
+    Wrapper function for runAxon().
+    Inputs:
+        axon_expr - Axon expression to be run by the SkySpark API
+    Outputs:
+        pointIds (list) - list of SkySpark point IDs
+    '''
     _, pointIds = runAxon(axon_expr)
     return pointIds
 
@@ -117,10 +135,15 @@ def loadCredentials():
 
 
 def runAxon(axon_expr):
-    load_dotenv()
-    username = os.getenv("DB_USERNAME")
-    password = os.getenv("DB_PASSWORD")
-    uri      = os.getenv("DB_URI")
+    '''
+    Run an Axon expression in the SkySpark API and return a Haystack Grid.
+    Inputs:
+        axon_expr - Axon expression to be run by the SkySpark API
+    Outputs:
+        data (Pandas DataFrame) - Grid of data returned from SkySpark 
+        pointIds (list) - list of SkySpark point IDs
+    '''
+    username, password, uri = loadCredentials()
 
     with open_haxall_client(uri, username, password) as client:
         #data is Grid returned from SkySpark
