@@ -7,13 +7,13 @@ import os
 import csv
 import pandas
 from zoneinfo import ZoneInfo
-from phable import open_haxall_client, open_haystack_client, DateRange, Ref, Grid, Number, Marker
+from phable import open_haxall_client, open_haystack_client, DateRange, DateTimeRange, Ref, Grid, Number, Marker
 from datetime import datetime, date, timedelta, timezone
 from dotenv import load_dotenv
 
 
 
-### ERRORS ###
+### CLASSES ###
 class EmptyUnitsError(Exception):
     '''
     Error raised when user tries to access a point in SkySpark without specifying units.
@@ -30,15 +30,28 @@ class EmptyUnitsError(Exception):
 def axon2Data(axon_expr):
     '''
     FUNCTION TO BE CALLED IN R.
-    Returning a Pandas DataFrame after running an Axon expression with the SkySpark API. 
+    Returning a Pandas DataFrame of a HayStack Grid object after running an Axon expression with the SkySpark API. 
     Wrapper function for runAxon().
     Inputs:
         axon_expr - Axon expression to be run by the SkySpark API
     Outputs:
         data (Pandas DataFrame) - Grid of data returned from SkySpark 
     '''
-    data, _ = runAxon(axon_expr)
+    data, _, __ = runAxon(axon_expr)
     return data
+
+def axon2His(axon_expr):
+    '''
+    FUNCTION TO BE CALLED IN R.
+    Returning a list of Pandas DataFrames of point histories after running an Axon expression with the SkySpark API. 
+    Wrapper function for runAxon().
+    Inputs:
+        axon_expr - Axon expression to be run by the SkySpark API
+    Outputs:
+        his (Pandas DataFrame) - Pandas DataFrame of SkySpakrk point histories
+    '''
+    _, __, his = runAxon(axon_expr)
+    return his
 
 
 def axon2PointIds(axon_expr):
@@ -51,7 +64,7 @@ def axon2PointIds(axon_expr):
     Outputs:
         pointIds (list) - list of SkySpark point IDs
     '''
-    _, pointIds = runAxon(axon_expr)
+    _, pointIds, __ = runAxon(axon_expr)
     return pointIds
 
 
@@ -142,9 +155,11 @@ def runAxon(axon_expr):
     Outputs:
         data (Pandas DataFrame) - Grid of data returned from SkySpark 
         pointIds (list) - list of SkySpark point IDs
+        his (Pandas DataFrame) - Pandas DataFrame of SkySpakrk point histories
     '''
     username, password, uri = loadCredentials()
 
+    #use Haxall client to return grid and pointIds
     with open_haxall_client(uri, username, password) as client:
         #data is Grid returned from SkySpark
         meta, data = client.eval(axon_expr).to_pandas_all()
@@ -154,4 +169,23 @@ def runAxon(axon_expr):
         for id in list(data.id.values):
             pointIds.append(id)
 
-    return data, pointIds
+    #use Haystack client to return histories
+    with open_haystack_client(uri, username, password) as client:
+        for id in pointIds:
+            #create DateRange for history
+            tzStr = data.hisStart.array[0].tz.zone
+            tzInfo = ZoneInfo(tzStr)
+            start = data.hisStart.array[0].to_pydatetime()
+            start = start.replace(tzinfo=tzInfo)
+            end = data.hisEnd.array[0].to_pydatetime()
+            end = end.replace(tzinfo=tzInfo)
+            range = DateTimeRange(start, end)
+
+            try:
+                his_grid = client.his_read_by_id(id, range).to_pandas_all()
+                his = his_grid[1]
+            except Exception as e:
+                msg = e.help_msg.meta
+                print(msg)
+
+    return data, pointIds, his
