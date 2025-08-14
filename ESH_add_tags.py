@@ -25,6 +25,7 @@ print("start:", datetime.now(), "\n")
 
 #load credentials from .env file
 username, password, uri = loadCredentials()
+uri = "https://codereadiness.com/api/eshProgramOverlay"
 
 #first, get list of all site IDs
 with open_haystack_client(uri, username, password) as haystack_client:
@@ -42,7 +43,7 @@ with open_haxall_client (uri, username, password) as haxall_client:
         rec = haxall_client.read_by_id(siteRef)
 
         #define new tag to add to rec
-        rec["ericTagTest"] = "test tag for each site"
+        rec["monitorStart"] = date(2000, 1, 1)
 
         #commit update to rec and capture response
         meta, rec_modified_grid = haxall_client.commit_update(rec).to_pandas_all()
