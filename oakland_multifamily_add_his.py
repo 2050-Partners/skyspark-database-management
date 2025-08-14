@@ -34,6 +34,8 @@ csvFolder = "/Users/ericswanson/Library/CloudStorage/OneDrive-SharedLibraries-20
 csvList = glob.glob(csvFolder + '/*.csv')
 #csvList.sort()
 
+errorCount = 0
+idFailList = []
 for i,file in enumerate(csvList):
 
     # #pick up where script left off
@@ -57,14 +59,13 @@ for i,file in enumerate(csvList):
             his = csv2grid(file, units=pointUnits)
             mid = math.ceil(len(his)/2)
 
-            errorCount = 0
             try:
                 response = haystack_client.his_write_by_id(idRef, his)
                 nextFile = True
                 print("successful first attempt for", idRef, "-- i =", i)
 
             except urllib.error.HTTPError as eHttp:
-                print("HTTP error with", idRef, "Trying again -- i =", i)
+                print(f"HTTP error ({eHttp.status}) with", idRef, "-- Trying again -- i =", i)
 
                 #if you get a 500 error back, the grid is mostly likely too big. Try again but with half the grid at a time
                 if eHttp.status == 500:
@@ -80,6 +81,8 @@ for i,file in enumerate(csvList):
                     except Exception as e:
                         print('Failed again for', idRef, " -- i =", i)
                         errorCount += 1
+                        nextFile = True
+                        idFailList.append(idRef)
 
                 #if you get a 502 error back, there's a server error and it's most likely overloaded. Wait a few minutes and try again.
                 elif eHttp.status == 502:
@@ -96,9 +99,11 @@ for i,file in enumerate(csvList):
                         print('Failed again for', idRef, " -- i =", i)
                         nextFile = True
                         errorCount += 1
+                        idFailList.append(idRef)
 
 
 print("Number of errors", errorCount)
+print("IDs that failed", idFailList)
 
 print("\nEnd:", datetime.now())
 
