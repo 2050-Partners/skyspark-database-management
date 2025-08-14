@@ -64,42 +64,54 @@ for i,file in enumerate(csvList):
                 nextFile = True
                 print("successful first attempt for", idRef, "-- i =", i)
 
-            except urllib.error.HTTPError as eHttp:
-                print(f"HTTP error ({eHttp.status}) with", idRef, "-- Trying again -- i =", i)
+            # except urllib.error.URLError as eUrl:
+            #     print(f"URL error for", idRef, "-- i =", i)
+            #     test = 0
 
-                #if you get a 500 error back, the grid is mostly likely too big. Try again but with half the grid at a time
-                if eHttp.status == 500:
+            # except urllib.error.URLError as e:
+            except Exception as e:
 
-                    print("# of rows for point history =", len(his))
+                if isinstance(e, urllib.error.URLError):
+                    print(f"{e} error for", idRef, "-- skipping file -- i =", i)
+                    nextFile = True
+                    idFailList.append(idRef)
 
-                    try:
-                        response = haystack_client.his_write_by_id(idRef, his[0:mid])
-                        response = haystack_client.his_write_by_id(idRef, his[mid:-1])
-                        nextFile = True
-                        print("successful write for", idRef, "-- i =", i)
+                elif isinstance(e, urllib.error.HTTPError):
+                    print(f"{e} error for", idRef, "-- Trying again -- i =", i)
 
-                    except Exception as e:
-                        print('Failed again for', idRef, " -- i =", i)
-                        errorCount += 1
-                        nextFile = True
-                        idFailList.append(idRef)
+                    #if you get a 500 error back, the grid is mostly likely too big. Try again but with half the grid at a time
+                    if e.status == 500:
 
-                #if you get a 502 error back, there's a server error and it's most likely overloaded. Wait a few minutes and try again.
-                elif eHttp.status == 502:
+                        print("# of rows for point history =", len(his))
 
-                    #wait 5 minutes
-                    time.sleep(300)
+                        try:
+                            response = haystack_client.his_write_by_id(idRef, his[0:mid])
+                            response = haystack_client.his_write_by_id(idRef, his[mid:-1])
+                            nextFile = True
+                            print("successful write for", idRef, "-- i =", i)
 
-                    try:
-                        response = haystack_client.his_write_by_id(idRef, his)
-                        nextFile = True
-                        print("successful write for", idRef, "-- i =", i)
+                        except Exception as e:
+                            print('Failed again for', idRef, " -- i =", i)
+                            errorCount += 1
+                            nextFile = True
+                            idFailList.append(idRef)
 
-                    except Exception as e:
-                        print('Failed again for', idRef, " -- i =", i)
-                        nextFile = True
-                        errorCount += 1
-                        idFailList.append(idRef)
+                    #if you get a 502 error back, there's a server error and it's most likely overloaded. Wait a few minutes and try again.
+                    elif e.status == 502:
+
+                        #wait 5 minutes
+                        time.sleep(300)
+
+                        try:
+                            response = haystack_client.his_write_by_id(idRef, his)
+                            nextFile = True
+                            print("successful write for", idRef, "-- i =", i)
+
+                        except Exception as e:
+                            print('Failed again for', idRef, " -- i =", i)
+                            nextFile = True
+                            errorCount += 1
+                            idFailList.append(idRef)
 
 
 print("Number of errors", errorCount)
