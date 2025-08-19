@@ -170,6 +170,7 @@ def runAxon(axon_expr):
             pointIds.append(id)
 
     #use Haystack client to return histories
+    hisList = []
     with open_haystack_client(uri, username, password) as client:
         for id in pointIds:
             #create DateRange for history
@@ -184,6 +185,7 @@ def runAxon(axon_expr):
             try:
                 his_grid = client.his_read_by_id(id, range).to_pandas_all()
                 his = his_grid[1]
+                hisList.append(his)
             except Exception as e:
                 msg = e.help_msg.meta
                 print(msg)
